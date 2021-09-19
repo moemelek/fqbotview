@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+#---------------------------------------------------
+#FtBotView - https://github.com/moemelek/fqbotview
+#---------------------------------------------------
+
 #Requires these lib:   
 #ALERT: make sure to install packages as SUDO if running as SUDO
 #sudo pip install pyyaml
@@ -25,10 +29,9 @@ from colorama import Fore, Back, Style
 DOCKER_CONTAINER_PATH = "~/ft_userdata"
 
 #TODO:
-#-Rewrite so that logfile,config, and strat is read from docker-compose.yml, so accessable even if docker is down
 #
 #
-#
+
 # dictionary keys as list
 def getList(dict):
     return dict.keys()
@@ -56,12 +59,7 @@ def cc(mode,text):
     return return_text
 
             
-#Function to parse the command arguments in *.yaml 
-#  command > 
-#    -- 
-#    --
-#can contain:
-#logfile,db-url,config,strategy,strategy-path
+#Function to parse the command arguments in *.yaml  affter: command > xxxxx
 def parseCommands(cmd_str):
     dict = {}
 
@@ -73,7 +71,7 @@ def parseCommands(cmd_str):
       dict[r[0]] = str(r[1])
     return dict
     
-    
+#FTBot Class    
 class FTBot:
     def __init__(self, d_name="",b_name="",docker_config={}):
         self.docker_name = d_name
@@ -81,7 +79,7 @@ class FTBot:
         self.docker_state = ""
         
         self.bot_name = b_name
-        self.bot_data = {}
+        self.bot_dict = {}
         
         self.os_logfile = ""
         
@@ -106,6 +104,7 @@ class FTBot:
               return
             else:
               print(error.output)
+              exit()
           
         docker_string=docker_string.rstrip(']\n')
         docker_string=docker_string.lstrip('[')
@@ -117,22 +116,8 @@ class FTBot:
         
         #Get info on the running _BOT_
         bot_data_str = subprocess.check_output(['sudo','docker','exec',self.bot_name,'scripts/rest_client.py','--config',self.docker_config['config'],'show_config'])
-        self.bot_data = json.loads(bot_data_str)
+        self.bot_dict = json.loads(bot_data_str)
 
-#        #Formats the list of commands parsed from docker-compose.yml with getData()
-#        def dictFromJsonArgs(self,list):
-#            dict = {}
-#            count = 1
-#            while count < len(list):
-#                dict[list[count].lstrip('--')] = list[count+1]
-#                count += 2  
-#            return dict   
-        
-#        def parseFromDockerYML(self):
-#            botsList = getList(yaml_dict['services'])
-#            prel_logfile = command_dict['logfile']
-#            logfile = prel_logfile.replace("/freqtrade","~/ft_userdata",1)
-            
 
 #---------------   Prapare Data - load the yaml file-----------------------
 #Load docker-compose.yml
@@ -163,8 +148,8 @@ for i in botsList:
     row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
     row[1] = i.bot_name #name of bot
     row[2] = cc("docker",i.docker_state) #docker state
-    row[3] = cc("bot",i.bot_data['state']) #bot state
-    row[4] = cc("mode",i.bot_data['runmode']) #bot mode
+    row[3] = cc("bot",i.bot_dict['state']) #bot state
+    row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
     row[5] = i.docker_config['strategy'] #strategy
     row[6] = i.os_logfile
     
