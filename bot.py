@@ -23,10 +23,7 @@ from colorama import init
 init()
 from colorama import Fore, Back, Style
 
-#----------------------------------
-#  ALERT: This script must be _RUN_ within the file structure of a docker container
-#----------------------------------
-DOCKER_CONTAINER_PATH = "~/ft_userdata"
+DOCKER_CONTAINER_PATH = "/home/rickard/ft_userdata/"
 
 #TODO:
 #
@@ -87,7 +84,8 @@ class FTBot:
 
     def getData(self):
         #Format the logfile name as seen by the OS
-        self.os_logfile = self.docker_config['logfile'].replace("/freqtrade",DOCKER_CONTAINER_PATH,1)
+
+        self.os_logfile = self.docker_config['logfile'].replace("/freqtrade/",DOCKER_CONTAINER_PATH,1)
         
         #Get info on the runnning _DOCKER CONTAINER_
         #Result of 'sudo docker inspect freqtrade_bitvavo' implies leading'[' and trailing ']' needs to be removed for json.load to work
@@ -121,7 +119,8 @@ class FTBot:
 
 #---------------   Prapare Data - load the yaml file-----------------------
 #Load docker-compose.yml
-with open("docker-compose.yml", "r") as stream:
+filename = os.path.join(DOCKER_CONTAINER_PATH, 'docker-compose.yml')
+with open(filename, "r") as stream:
     try:
         yaml_dict = yaml.safe_load(stream)
     except yaml.YAMLError as exc:
