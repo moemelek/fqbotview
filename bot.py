@@ -9,30 +9,42 @@
 #sudo pip install pyyaml
 #sudo pip install colorama
 #sudo pip install prettytable
+
 import yaml
 import time
 import datetime
 import json
 import subprocess
 import os
+import signal
+
 from pprint import pprint
 from prettytable import PrettyTable
 from sys import exit
-
 #Colorama - For formating text
 #https://pypi.org/project/colorama/
 from colorama import init
 init()
 from colorama import Fore, Back, Style
 
+#Catch CTRL-C
+def signal_handler(signal, frame):
+  print "\n\nAbort\n"
+  exit(0)
+signal.signal(signal.SIGINT, signal_handler)
+
 DOCKER_CONTAINER_PATH = "/home/rickard/ft_userdata/"
+DOCKER_CONFIG_FILE = "docker-compose.yml"
 
 #TODO:
 # - More clever path replacement for os paths
 # - Elaborate on restAPIcommand, error handling, and use it in GetData as well
-# - Commands in menus, implement
 # - Implement command line arguments
+# - Handle incorrect bot-name
+# - Improve workflow
+# - Show URL for FreqUI
 
+#-------------------------------------------------------------- M E N U S ------------------------------------------------------
 def mainMenu():
     print
     print botOverview() #Print the table of bots   
@@ -81,27 +93,45 @@ def itemMenu(i):
     #Add rows to table
     table.add_row(["Docker state",i.docker_state,"Total profit closed trades ",profit_cp_str])
     table.add_row(["Bot state",i.bot_dict['state'],"Total profit closed trades ", profit_cc_str ])
-    table.add_row(["Bot strategy",i.bot_dict['strategy'],"",""])
-    table.add_row(["Exchange",i.bot_dict['exchange'],"",""])
-    table.add_row(["Mode",i.bot_dict['runmode'],"",""])
-    table.add_row(["Title (config.json)",i.bot_dict['bot_name'],"",""])
+    table.add_row(["Bot strategy",i.bot_config['strategy'],"",""])
     
+    if (i.docker_state) == "running":
+      table.add_row(["Exchange",i.bot_dict['exchange'],"",""])
+      table.add_row(["Mode",i.bot_dict['runmode'],"",""])
+      table.add_row(["Title (config.json)",i.bot_dict['bot_name'],"",""])
+    
+    table.add_row(["","","",""])
+    table.add_row(["CONFIG",i.os_configfile,"",""])
+    table.add_row(["LOG",i.os_logfile,"",""])
     print table
     print
-    print "Quick access"
-    print "-----------------------"
-    print "LOGS: " + i.os_logfile + "*"
-    print "JSON: " + i.os_configfile
-    print "-----------------------"
-    print
-#    print "r - Reload bot"
-#    print 
-#    print "d - Docker down"
-#    print "u - Docker up"
-#    print 
-#    print "tl - tail log" 
-#    print "sl - scan log for buy signals" 
+    print "r - Reload config"
+    print 
+    print "d - Docker down"
+    print "u - Docker up"
+    print 
+    print "tl - tail log" 
+    print "bl - scan log for buy signals" 
 
+    command = "foo"
+    while command != "":
+      command = raw_input(">> ")
+      if command == "d":
+        result = controlDockerCompose("rm -s -v -f",i.docker_name)
+        print result
+      if command == "u":
+        result = controlDockerCompose("up -d",i.docker_name)
+        print result
+      #reload bot config
+      if command == "r":
+        result = restAPIcommand(i.bot_name,i.bot_config['config'],'reload_config')
+        print result['status']
+      #tail log
+      if command == "tl":
+        osCommand("tail -f " + i.os_logfile)
+      #cat in reverse date order
+      if command == "bl":
+        osCommand("ls -1rt "+ i.os_logfile + "*  | xargs cat | grep Buy")
 
 def botOverview():
     #Prepare table
@@ -122,7 +152,7 @@ def botOverview():
         table.add_row(row)
         
     return table 
-  
+#------------------------------------------------ F U N C T I O N S --------------------------------------------------------------
 # dictionary keys as list
 def getList(dict):
     return dict.keys()
@@ -134,7 +164,7 @@ def cc(mode,text):
     if mode == "docker":
       if text == "running": 
         return_text = Fore.GREEN + "Up" + Style.RESET_ALL
-      elif text == "stopped":
+      elif text == "down":
         return_text = Fore.RED + "Down" + Style.RESET_ALL
     if mode == "bot":
       if text == "running": 
@@ -157,6 +187,14 @@ def restAPIcommand(bot_name,bot_config,command):
     data_str=subprocess.check_output(['sudo','docker','exec',bot_name,'scripts/rest_client.py','--config',bot_config,command])
     data_dict = json.loads(data_str)
     return data_dict
+
+def controlDockerCompose(commands,docker_name):
+    result = os.system("sudo docker-compose --file " + DOCKER_CONTAINER_PATH + DOCKER_CONFIG_FILE + " " + commands + " " + docker_name)
+    return result
+    
+def osCommand(string):
+    #Possible security issue with using shell=True,  https://en.wikipedia.org/wiki/Code_injection#Shell_injection
+    print subprocess.call(string,shell=True) 
             
 #Function to parse the command arguments in *.yaml  affter: command > xxxxx
 def parseCommands(cmd_str):
@@ -198,7 +236,7 @@ class FTBot:
             #If the docker container is not up...
             if error.output.find('Error: No such object: '+self.bot_name) > -1:
               self.docker_state = "down"
-              self.bot_config = {}
+              #self.bot_config = {}
               self.bot_dict = {}
               self.bot_dict['state'] = "-" #bot state
               self.bot_dict['runmode'] = "-" #bot mode
@@ -216,15 +254,12 @@ class FTBot:
         self.docker_state = docker_dict['State']['Status']
         
         #Get info on the running _BOT_
-        #bot_data_str = subprocess.check_output(['sudo','docker','exec',self.bot_name,'scripts/rest_client.py','--config',self.bot_config['config'],'show_config'])
         self.bot_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'show_config')
 
-        #self.bot_dict = json.loads(bot_data_str)
 
-
-#---------------   Prapare Data - load the yaml file-----------------------
+#---------------   ************  M A I N  ************-----------------------
 #Load docker-compose.yml
-filename = os.path.join(DOCKER_CONTAINER_PATH, 'docker-compose.yml')
+filename = os.path.join(DOCKER_CONTAINER_PATH, DOCKER_CONFIG_FILE)
 with open(filename, "r") as stream:
     try:
         yaml_dict = yaml.safe_load(stream)
@@ -246,23 +281,19 @@ for k, v in reversed(yaml_dict['services'].items()):
 mainMenu()
 
  
-#---------------------   Save for later ---------------------------
-#*** Run though OS call 
-#  result = os.system("sudo docker-compose ps")
-#*** To stop one bot
-#sudo docker-compose rm -s -v -f freqtrade2
-#*** run command into docker
-#sudo docker exec freqtrade_bitvavo scripts/rest_client.py --config user_data/bitvavo_nfinext_live.json show_config
-#*** location of webfiles:
-#freqtrade/rpc/api_server/ui/installed
-#*** api location 
-#http://127.0.0.1:8080/api/v1/ping
-#***serving javascript
-#freqtrade/rpc/api_server/ui/installed/js/trade.16b3869c.js
 #-----------------------    TRASH -----------------------------------
-#    print
-#    print Fore.BLUE + "instance: " + Style.RESET_ALL + bot
-#    print Fore.BLUE + "name: " + Style.RESET_ALL + yaml_dict['services'][bot]['container_name']
-#    print "Strategy name: " + command_dict['strategy']
-#    print "Logfile: " + logfile
-#    print (Style.RESET_ALL)
+##https://gist.github.com/dwaltrip/bd3321880180f556ba0f9d1c4962b6f7  
+#def tailFile(filename):
+#    with open(filename, 'r') as f:
+#      while True:
+#        line = f.readline()
+#        if line:
+#          yield line
+#        else:
+#          time.sleep(0.5)
+#          
+##https://stackoverflow.com/questions/26355787/tail-on-python-best-performance-implementation
+#from collections import deque
+#def tailNR(filename, n=10):
+#    'Return the last n lines of a file'
+#    return deque(open(filename), n)
