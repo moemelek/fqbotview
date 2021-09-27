@@ -91,13 +91,13 @@ def itemMenu(i):
       profit_cc_str = str(profit_cc) + " " + i.bot_dict['stake_currency']
       
     #Add rows to table
-    table.add_row(["Docker state",i.docker_state,"Total profit closed trades ",profit_cp_str])
-    table.add_row(["Bot state",i.bot_dict['state'],"Total profit closed trades ", profit_cc_str ])
+    table.add_row(["Docker state",cc("docker",i.docker_state),"Total profit,closed trades ",profit_cp_str])
+    table.add_row(["Bot state",cc("bot",i.bot_dict['state']),"Total profit, closed trades ", profit_cc_str ])
     table.add_row(["Bot strategy",i.bot_config['strategy'],"",""])
-    
+        
     if (i.docker_state) == "running":
+      table.add_row(["Mode",cc("mode",i.bot_dict['runmode']),"",""])
       table.add_row(["Exchange",i.bot_dict['exchange'],"",""])
-      table.add_row(["Mode",i.bot_dict['runmode'],"",""])
       table.add_row(["Title (config.json)",i.bot_dict['bot_name'],"",""])
     
     table.add_row(["","","",""])
@@ -205,7 +205,8 @@ def parseCommands(cmd_str):
     for e in command:
       r=e.strip() #remove leading and trailing spaces
       r=r.split(' ')
-      dict[r[0]] = str(r[1])
+      if not dict.has_key(r[0]): # Pick first entry of any given command, ignore the rest (for now)
+        dict[r[0]] = str(r[1])
     return dict
     
 #FTBot Class    
