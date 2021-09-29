@@ -43,7 +43,8 @@ DOCKER_CONFIG_FILE = "docker-compose.yml"
 # - Handle incorrect bot-name
 # - Improve workflow
 # - Show URL for FreqUI
-
+# - Reprogram - Some info is subject to change, like if Docker is commanded down, make sure this is reflected
+#               This is already fixed for info on profits
 #-------------------------------------------------------------- M E N U S ------------------------------------------------------
 def mainMenu():
     print
@@ -58,7 +59,28 @@ def mainMenu():
         itemMenu(x)
     return
 
-#Menu , send i = object
+def botOverview():
+    #Prepare table
+    table = PrettyTable()       
+    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Gain %", "Gain Stake"]
+    #Make table data 
+    for i in botsList:
+        profit = i.getProfit()
+        row = ["","","","","","","",""]
+        row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
+        row[1] = i.bot_name #name of bot
+        row[2] = cc("docker",i.docker_state) #docker state
+        row[3] = cc("bot",i.bot_dict['state']) #bot state
+        row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
+        row[5] = i.bot_config['strategy'] #strategy
+        row[6] = profit['percent']
+        row[7] = profit['stake']
+        
+        table.add_row(row)
+        
+    return table 
+    
+#Detailed Menu , send i = object
 def itemMenu(i):
 
     #Column names
@@ -76,23 +98,13 @@ def itemMenu(i):
     table.align[c3] = "l"
     table.align[c4] = "r"
     
-    #Prepare fourth column
-    profit_cp_str = "Not available"
-    profit_cc_str = "Not available" 
-    
-    if (i.docker_state) == "running":
-      #Read current profit stats
-      profit_dict = restAPIcommand(i.bot_name,i.bot_config['config'],'profit')
-      
-      profit_cp = profit_dict['profit_closed_percent']
-      profit_cc = round(profit_dict['profit_closed_coin'],2) 
-  
-      profit_cp_str = str(profit_cp) + " %"
-      profit_cc_str = str(profit_cc) + " " + i.bot_dict['stake_currency']
+   
+    #Read current profit stats
+    profit_dict = i.getProfit()
       
     #Add rows to table
-    table.add_row(["Docker state",cc("docker",i.docker_state),"Total profit,closed trades ",profit_cp_str])
-    table.add_row(["Bot state",cc("bot",i.bot_dict['state']),"Total profit, closed trades ", profit_cc_str ])
+    table.add_row(["Docker state",cc("docker",i.docker_state),"Total profit,closed trades ",profit_dict['percent']])
+    table.add_row(["Bot state",cc("bot",i.bot_dict['state']),"Total profit, closed trades ",profit_dict['stake']])
     table.add_row(["Bot strategy",i.bot_config['strategy'],"",""])
         
     if (i.docker_state) == "running":
@@ -133,25 +145,7 @@ def itemMenu(i):
       if command == "bl":
         osCommand("ls -1rt "+ i.os_logfile + "*  | xargs cat | grep Buy")
 
-def botOverview():
-    #Prepare table
-    table = PrettyTable()
-    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy", "Logfile"]
 
-    #Make table data 
-    for i in botsList:
-        row = ["","","","","","",""]
-        row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
-        row[1] = i.bot_name #name of bot
-        row[2] = cc("docker",i.docker_state) #docker state
-        row[3] = cc("bot",i.bot_dict['state']) #bot state
-        row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
-        row[5] = i.bot_config['strategy'] #strategy
-        row[6] = i.os_logfile
-        
-        table.add_row(row)
-        
-    return table 
 #------------------------------------------------ F U N C T I O N S --------------------------------------------------------------
 # dictionary keys as list
 def getList(dict):
@@ -218,6 +212,7 @@ class FTBot:
         self.bot_name = b_name
         self.bot_config = bot_config
         self.bot_dict = {}
+        self.profit_dict = {}
         
         self.os_logfile = ""
         self.os_configfile = ""
@@ -256,6 +251,23 @@ class FTBot:
         
         #Get info on the running _BOT_
         self.bot_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'show_config')
+
+    #Get profit
+    def getProfit(self):
+        ret_dict = {}
+        ret_dict['percent'] = "?"
+        ret_dict['stake'] = "?"
+        
+        if (self.docker_state) == "running":
+          profit_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'profit')
+          
+          profit_cp = profit_dict['profit_closed_percent']
+          profit_cc = round(profit_dict['profit_closed_coin'],2) 
+      
+          ret_dict['percent'] = str(profit_cp) + " %"
+          ret_dict['stake'] = str(profit_cc) + " " + self.bot_dict['stake_currency']
+        
+        return ret_dict
 
 
 #---------------   ************  M A I N  ************-----------------------
