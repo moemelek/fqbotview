@@ -27,6 +27,7 @@ from sys import exit
 from colorama import init
 init()
 from colorama import Fore, Back, Style
+from os.path import expanduser
 
 #Catch CTRL-C
 def signal_handler(signal, frame):
@@ -34,10 +35,12 @@ def signal_handler(signal, frame):
   exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-DOCKER_CONTAINER_PATH = "/home/rickard/ft_userdata/"
+HOME = expanduser("~")
+DOCKER_CONTAINER_PATH = HOME+"/ft_userdata/"
 DOCKER_CONFIG_FILE = "docker-compose.yml"
 
 #Check for command line input
+COMMAND=""
 if len(sys.argv) > 1:
   #sys.argv[1] will contain first argument
   COMMAND = sys.argv[1]
