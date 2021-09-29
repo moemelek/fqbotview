@@ -11,6 +11,7 @@
 #sudo pip install prettytable
 
 import yaml
+import sys
 import time
 import datetime
 import json
@@ -36,6 +37,11 @@ signal.signal(signal.SIGINT, signal_handler)
 DOCKER_CONTAINER_PATH = "/home/rickard/ft_userdata/"
 DOCKER_CONFIG_FILE = "docker-compose.yml"
 
+#Check for command line input
+if len(sys.argv) > 1:
+  #sys.argv[1] will contain first argument
+  COMMAND = sys.argv[1]
+
 #TODO:
 # - More clever path replacement for os paths
 # - Elaborate on restAPIcommand, error handling, and use it in GetData as well
@@ -48,8 +54,13 @@ DOCKER_CONFIG_FILE = "docker-compose.yml"
 #-------------------------------------------------------------- M E N U S ------------------------------------------------------
 def mainMenu():
     print
-    print botOverview() #Print the table of bots   
+    print botOverview() #Print the table of bots  
     print
+
+    #If input on command line...
+    if COMMAND == "q":   #quick mode
+      exit()
+      
     pick = raw_input("Pick container: ")
     if pick == "":
         print "Goodbye"
@@ -271,6 +282,7 @@ class FTBot:
 
 
 #---------------   ************  M A I N  ************-----------------------
+
 #Load docker-compose.yml
 filename = os.path.join(DOCKER_CONTAINER_PATH, DOCKER_CONFIG_FILE)
 with open(filename, "r") as stream:
