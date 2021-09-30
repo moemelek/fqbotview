@@ -35,7 +35,13 @@ def signal_handler(signal, frame):
   exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-HOME = expanduser("~")
+#Definitions
+if os.environ.has_key('SUDO_USER'):
+    USER= os.environ['SUDO_USER']
+else:
+    USER=os.environ['USER']
+
+HOME = "/home/"+USER
 DOCKER_CONTAINER_PATH = HOME+"/ft_userdata/"
 DOCKER_CONFIG_FILE = "docker-compose.yml"
 
