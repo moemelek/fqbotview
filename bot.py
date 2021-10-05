@@ -82,20 +82,26 @@ def mainMenu():
 def botOverview():
     #Prepare table
     table = PrettyTable()       
-    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Gain %", "Gain Stake"]
+    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Port","Gain %", "Gain Stake"]
     #Make table data 
     for i in botsList:
         profit = i.getProfit()
-        row = ["","","","","","","",""]
+        row = ["","","","","","","","",""]
         row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
         row[1] = i.bot_name #name of bot
         row[2] = cc("docker",i.docker_state) #docker state
         row[3] = cc("bot",i.bot_dict['state']) #bot state
         row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
         row[5] = i.bot_config['strategy'] #strategy
-        row[6] = profit['percent']
-        row[7] = profit['stake']
-        
+        row[6] = i.port #Port
+        row[7] = profit['percent']
+        row[8] = profit['stake']
+	
+#	print i.bot_name + " >>>>>>>>>>>>>>> i.bot_dict >>>>>>>>>><" 
+#	print i.bot_dict
+#	print i.bot_name + " >>>>>>>>>>>>>>> i.docker_dict >>>>>>>>>><" 
+#	print i.docker_dict
+
         table.add_row(row)
         
     return table 
@@ -228,7 +234,8 @@ class FTBot:
     def __init__(self, d_name="",b_name="",bot_config={}):
         self.docker_name = d_name
         self.docker_state = ""
-       
+	self.docker_dict = {}       
+
         self.bot_name = b_name
         self.bot_config = bot_config
         self.bot_dict = {}
@@ -237,7 +244,7 @@ class FTBot:
         self.os_logfile = ""
         self.os_configfile = ""
                 
-        self.yaml_dict = {}
+#        self.yaml_dict = {}
 
     def getData(self):
         #Format the logfile name as seen by the OS
@@ -264,11 +271,16 @@ class FTBot:
         #Result of 'sudo docker inspect freqtrade_bitvavo': leading'[' and trailing ']' needs to be removed for json.load to work          
         docker_string=docker_string.rstrip(']\n')
         docker_string=docker_string.lstrip('[')
-        docker_dict = json.loads(docker_string) # Load to dictionary format
+        self.docker_dict = json.loads(docker_string) # Load to dictionary format
         
         #Get the state of docker container (if not declared "down" in try statement above)
-        self.docker_state = docker_dict['State']['Status']
-        
+        self.docker_state = self.docker_dict['State']['Status']
+
+        #Get the port
+        port_txt = self.docker_dict['Config']['ExposedPorts']
+        field, value = port_txt.items()[0]
+        self.port = field.rstrip('/tcp')
+                
         #Get info on the running _BOT_
         self.bot_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'show_config')
 
