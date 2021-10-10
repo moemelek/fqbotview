@@ -58,6 +58,7 @@ if len(sys.argv) > 1:
 # - Handle incorrect bot-name
 # - Improve workflow
 # - Show URL for FreqUI
+# - load yaml using round_trip_load instead, to preserve order
 #-------------------------------------------------------------- M E N U S ------------------------------------------------------
 def mainMenu():
     print
@@ -157,14 +158,15 @@ def itemMenu(i):
       command = raw_input(">> ")
       if command == "d":
         result = controlDockerCompose("rm -s -v -f",i.docker_name)  #returns a dict
-        print result['status']
+        #print result['status']
       if command == "u":
         result = controlDockerCompose("up -d",i.docker_name) #returns a dict
-        print result['status']
+        #print result['status']
       #reload bot config
       if command == "r":
         result = restAPIcommand(i.bot_name,i.bot_config['config'],'reload_config')  #returns a dict
-        print result['status']
+        print "Reloading config..."
+        #print result['status']
       #tail log
       if command == "tl":
         osCommand("tail -f " + i.os_logfile)
@@ -250,6 +252,7 @@ class FTBot:
 #        self.yaml_dict = {}
 
     def getData(self):
+        print self.docker_name+"<<<<<<<<"
         #Format the logfile name as seen by the OS
 
         self.os_logfile = osFilePath(self.bot_config['logfile'])
@@ -258,20 +261,20 @@ class FTBot:
         #Get info on the runnning _DOCKER CONTAINER_
         try:
           docker_string = subprocess.check_output(['sudo','docker','inspect',self.bot_name], stderr=subprocess.STDOUT)
+          print "Container OK"
         except subprocess.CalledProcessError as error:
             #If the docker container is not up...
             if error.output.find('Error: No such object: '+self.bot_name) > -1:
               self.docker_state = "down"
-              #self.bot_config = {}
               self.bot_dict = {}
               self.bot_dict['state'] = "-" #bot state
               self.bot_dict['runmode'] = "-" #bot mode
-              self.bot_dict['runmode'] = "-" #bot mode
               self.bot_dict['exchange']="?" #Exchange
-              self.port="-" #Port
+              self.info_dict = {}
               self.info_dict['percent'] = "?"
               self.info_dict['stake'] = "?"
               self.info_dict['days_since_first_trade'] = "?"
+              self.port="-" #Port
               return
             else:
               print(error.output)
@@ -325,20 +328,21 @@ class FTBot:
 filename = os.path.join(DOCKER_CONTAINER_PATH, DOCKER_CONFIG_FILE)
 with open(filename, "r") as stream:
     try:
-        yaml_dict = yaml.safe_load(stream)
+        yaml_dict = yaml.load(stream) #round_trip_load preserves the order
     except yaml.YAMLError as exc:
         print(exc)
         exit()    
 
 #Prepare list of bot objects
 botsList = []
-i =0 
-for k, v in reversed(yaml_dict['services'].items()):
+for k, v in yaml_dict['services'].items():
     cmd_str = yaml_dict['services'][k]['command']
+    print "\n" + cmd_str + "\n"
     cmd_dict = parseCommands(cmd_str)
     botsList.append(FTBot(k,v['container_name'],cmd_dict))
-    botsList[i].getData()
-    i =+ 1
+
+for i in botsList:
+    i.getData()
 
 #Start
 mainMenu()
