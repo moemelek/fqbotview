@@ -86,22 +86,23 @@ def botOverview():
     #Make table data 
     for i in botsList:
         row = ["","","","","","","","","","",""]
+
         row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
         row[1] = i.bot_name #name of bot
         row[2] = cc("docker",i.docker_state) #docker state
         row[3] = cc("bot",i.bot_dict['state']) #bot state
         row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
         row[5] = i.bot_config['strategy'] #strategy
-        row[6] = i.info_dict['exchange'] #exchange
+        row[6] = i.bot_dict['exchange'] #exchange
         row[7] = i.port #Port 
         row[8] = i.info_dict['days_since_first_trade']
         row[9] = i.info_dict['percent']
         row[10] = i.info_dict['stake']
 	
-#	print i.bot_name + " >>>>>>>>>>>>>>> i.bot_dict >>>>>>>>>><" 
-#	print i.bot_dict
-#	print i.bot_name + " >>>>>>>>>>>>>>> i.docker_dict >>>>>>>>>><" 
-#	print i.docker_dict
+#        print i.bot_name + " >>>>>>>>>>>>>>> i.bot_dict >>>>>>>>>><" 
+#        print i.bot_dict
+#        print i.bot_name + " >>>>>>>>>>>>>>> i.docker_dict >>>>>>>>>><" 
+#        print i.docker_dict
 
         table.add_row(row)
         
@@ -237,6 +238,7 @@ class FTBot:
         self.bot_config = bot_config
         self.bot_dict = {}
         self.info_dict = {}
+        self.port= {}
         
         self.os_logfile = ""
         self.os_configfile = ""
@@ -260,6 +262,12 @@ class FTBot:
               self.bot_dict = {}
               self.bot_dict['state'] = "-" #bot state
               self.bot_dict['runmode'] = "-" #bot mode
+              self.bot_dict['runmode'] = "-" #bot mode
+              self.bot_dict['exchange']="?" #Exchange
+              self.port="-" #Port
+              self.info_dict['percent'] = "?"
+              self.info_dict['stake'] = "?"
+              self.info_dict['days_since_first_trade'] = "?"
               return
             else:
               print(error.output)
@@ -280,17 +288,13 @@ class FTBot:
                 
         #Get info on the running _BOT_
         self.bot_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'show_config')
-        
+
         #Get current profit state, ongoing trades, and first trade
         self.info_dict = self.getTradeInfo()
 
     #Get current profit state, ongoing trades, and first trade
     def getTradeInfo(self):
         ret_dict = {}
-        ret_dict['percent'] = "?"
-        ret_dict['stake'] = "?"
-        ret_dict['exchange'] = "?"
-        ret_dict['days_since_first_trade'] = "?"
         
         if (self.docker_state) == "running":
           profit_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'profit')
@@ -300,11 +304,14 @@ class FTBot:
       
           ret_dict['percent'] = str(profit_cp) + " %"
           ret_dict['stake'] = str(profit_cc) + " " + self.bot_dict['stake_currency']
-        
-          dsft = round ( ( time.time() - (profit_dict['first_trade_timestamp'] / 1000) ) / 86400 )
-        
-          ret_dict['days_since_first_trade'] = str ( int ( dsft ) ) +" d"
-        
+
+	  #If there has been a first trade... calculate ho wmany days since it happened        
+	  if profit_dict['first_trade_timestamp']!=0:
+	     dsft = round ( ( time.time() - (profit_dict['first_trade_timestamp'] / 1000) ) / 86400 )
+             ret_dict['days_since_first_trade'] = str ( int ( dsft ) ) +" d"
+          else:
+             ret_dict['days_since_first_trade'] = "-"
+
         return ret_dict
 
 
