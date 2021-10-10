@@ -82,20 +82,21 @@ def mainMenu():
 def botOverview():
     #Prepare table
     table = PrettyTable()       
-    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Port","Gain %", "Gain Stake"]
+    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Exchange","Port","Gain %", "Gain Stake"]
     #Make table data 
     for i in botsList:
         profit = i.getProfit()
-        row = ["","","","","","","","",""]
+        row = ["","","","","","","","","",""]
         row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
         row[1] = i.bot_name #name of bot
         row[2] = cc("docker",i.docker_state) #docker state
         row[3] = cc("bot",i.bot_dict['state']) #bot state
         row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
         row[5] = i.bot_config['strategy'] #strategy
-        row[6] = i.port #Port
-        row[7] = profit['percent']
-        row[8] = profit['stake']
+        row[6] = i.bot_dict['exchange'] #exchange
+        row[7] = i.port #Port 
+        row[8] = profit['percent']
+        row[9] = profit['stake']
 	
 #	print i.bot_name + " >>>>>>>>>>>>>>> i.bot_dict >>>>>>>>>><" 
 #	print i.bot_dict
