@@ -58,8 +58,6 @@ if len(sys.argv) > 1:
 # - Handle incorrect bot-name
 # - Improve workflow
 # - Show URL for FreqUI
-# - Reprogram - Some info is subject to change, like if Docker is commanded down, make sure this is reflected
-#               This is already fixed for info on profits
 #-------------------------------------------------------------- M E N U S ------------------------------------------------------
 def mainMenu():
     print
@@ -69,16 +67,21 @@ def mainMenu():
     #If input on command line...
     if COMMAND == "q":   #quick mode
       exit()
-      
-    pick = raw_input("Pick container: ")
-    if pick == "":
-        print "Goodbye"
-        exit() 
-    for x in botsList:
-      if x.docker_name == pick:
-        itemMenu(x)
-    return
 
+    #If more then one bot is configured    
+    if len(botsList) > 1:
+      pick = raw_input("Pick container: ")
+      if pick == "":
+          print "Goodbye"
+          exit() 
+      for x in botsList:
+        if x.docker_name == pick:
+          itemMenu(x)
+    #If there is just one bot...
+    else:
+       pick = raw_input("[RETURN]")
+       itemMenu(botsList[0])       
+       
 def botOverview():
     #Prepare table
     table = PrettyTable()       
@@ -153,14 +156,14 @@ def itemMenu(i):
     while command != "":
       command = raw_input(">> ")
       if command == "d":
-        result = controlDockerCompose("rm -s -v -f",i.docker_name)
-        print result
+        result = controlDockerCompose("rm -s -v -f",i.docker_name)  #returns a dict
+        print result['status']
       if command == "u":
-        result = controlDockerCompose("up -d",i.docker_name)
-        print result
+        result = controlDockerCompose("up -d",i.docker_name) #returns a dict
+        print result['status']
       #reload bot config
       if command == "r":
-        result = restAPIcommand(i.bot_name,i.bot_config['config'],'reload_config')
+        result = restAPIcommand(i.bot_name,i.bot_config['config'],'reload_config')  #returns a dict
         print result['status']
       #tail log
       if command == "tl":
@@ -169,6 +172,7 @@ def itemMenu(i):
       if command == "bl":
         osCommand("ls -1rt "+ i.os_logfile + "*  | xargs cat | grep Buy")
 
+    exit()
 
 #------------------------------------------------ F U N C T I O N S --------------------------------------------------------------
 # dictionary keys as list
