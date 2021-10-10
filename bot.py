@@ -92,7 +92,7 @@ def botOverview():
         row[3] = cc("bot",i.bot_dict['state']) #bot state
         row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
         row[5] = i.bot_config['strategy'] #strategy
-        row[6] = i.bot_dict['exchange'] #exchange
+        row[6] = i.info_dict['exchange'] #exchange
         row[7] = i.port #Port 
         row[8] = i.info_dict['days_since_first_trade']
         row[9] = i.info_dict['percent']
