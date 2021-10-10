@@ -82,11 +82,10 @@ def mainMenu():
 def botOverview():
     #Prepare table
     table = PrettyTable()       
-    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Exchange","Port","Gain %", "Gain Stake"]
+    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Exchange","Port","Days","Gain %", "Gain Stake"]
     #Make table data 
     for i in botsList:
-        profit = i.getProfit()
-        row = ["","","","","","","","","",""]
+        row = ["","","","","","","","","","",""]
         row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
         row[1] = i.bot_name #name of bot
         row[2] = cc("docker",i.docker_state) #docker state
@@ -95,8 +94,9 @@ def botOverview():
         row[5] = i.bot_config['strategy'] #strategy
         row[6] = i.bot_dict['exchange'] #exchange
         row[7] = i.port #Port 
-        row[8] = profit['percent']
-        row[9] = profit['stake']
+        row[8] = i.info_dict['days_since_first_trade']
+        row[9] = i.info_dict['percent']
+        row[10] = i.info_dict['stake']
 	
 #	print i.bot_name + " >>>>>>>>>>>>>>> i.bot_dict >>>>>>>>>><" 
 #	print i.bot_dict
@@ -124,15 +124,11 @@ def itemMenu(i):
     table.align[c2] = "l"
     table.align[c3] = "l"
     table.align[c4] = "r"
-    
-   
-    #Read current profit stats
-    profit_dict = i.getProfit()
-      
+         
     #Add rows to table
-    table.add_row(["Docker state",cc("docker",i.docker_state),"Total profit,closed trades ",profit_dict['percent']])
-    table.add_row(["Bot state",cc("bot",i.bot_dict['state']),"Total profit, closed trades ",profit_dict['stake']])
-    table.add_row(["Bot strategy",i.bot_config['strategy'],"",""])
+    table.add_row(["Docker state",cc("docker",i.docker_state),"Total profit,closed trades ",i.info_dict['percent']])
+    table.add_row(["Bot state",cc("bot",i.bot_dict['state']),"Total profit, closed trades ", i.info_dict['stake']])
+    table.add_row(["Bot strategy",i.bot_config['strategy'],"Days since first trade",i.info_dict['days_since_first_trade']])
         
     if (i.docker_state) == "running":
       table.add_row(["Mode",cc("mode",i.bot_dict['runmode']),"",""])
@@ -235,12 +231,12 @@ class FTBot:
     def __init__(self, d_name="",b_name="",bot_config={}):
         self.docker_name = d_name
         self.docker_state = ""
-	self.docker_dict = {}       
+        self.docker_dict = {}       
 
         self.bot_name = b_name
         self.bot_config = bot_config
         self.bot_dict = {}
-        self.profit_dict = {}
+        self.info_dict = {}
         
         self.os_logfile = ""
         self.os_configfile = ""
@@ -284,21 +280,29 @@ class FTBot:
                 
         #Get info on the running _BOT_
         self.bot_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'show_config')
+        
+        #Get current profit state, ongoing trades, and first trade
+        self.info_dict = self.getTradeInfo()
 
-    #Get profit
-    def getProfit(self):
+    #Get current profit state, ongoing trades, and first trade
+    def getTradeInfo(self):
         ret_dict = {}
         ret_dict['percent'] = "?"
         ret_dict['stake'] = "?"
+        ret_dict['days_since_first_trade'] = "?"
         
         if (self.docker_state) == "running":
           profit_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'profit')
-          
+
           profit_cp = profit_dict['profit_closed_percent']
           profit_cc = round(profit_dict['profit_closed_coin'],2) 
       
           ret_dict['percent'] = str(profit_cp) + " %"
           ret_dict['stake'] = str(profit_cc) + " " + self.bot_dict['stake_currency']
+        
+          dsft = round ( ( time.time() - (profit_dict['first_trade_timestamp'] / 1000) ) / 86400 )
+        
+          ret_dict['days_since_first_trade'] = str ( int ( dsft ) ) +" d"
         
         return ret_dict
 
