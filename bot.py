@@ -289,6 +289,7 @@ class FTBot:
         ret_dict = {}
         ret_dict['percent'] = "?"
         ret_dict['stake'] = "?"
+        ret_dict['exchange'] = "?"
         ret_dict['days_since_first_trade'] = "?"
         
         if (self.docker_state) == "running":
