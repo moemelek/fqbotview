@@ -252,7 +252,6 @@ class FTBot:
 #        self.yaml_dict = {}
 
     def getData(self):
-        print self.docker_name+"<<<<<<<<"
         #Format the logfile name as seen by the OS
 
         self.os_logfile = osFilePath(self.bot_config['logfile'])
@@ -261,7 +260,6 @@ class FTBot:
         #Get info on the runnning _DOCKER CONTAINER_
         try:
           docker_string = subprocess.check_output(['sudo','docker','inspect',self.bot_name], stderr=subprocess.STDOUT)
-          print "Container OK"
         except subprocess.CalledProcessError as error:
             #If the docker container is not up...
             if error.output.find('Error: No such object: '+self.bot_name) > -1:
@@ -328,7 +326,7 @@ class FTBot:
 filename = os.path.join(DOCKER_CONTAINER_PATH, DOCKER_CONFIG_FILE)
 with open(filename, "r") as stream:
     try:
-        yaml_dict = yaml.load(stream) #round_trip_load preserves the order
+        yaml_dict = yaml.safe_load(stream) #round_trip_load preserves the order
     except yaml.YAMLError as exc:
         print(exc)
         exit()    
