@@ -54,10 +54,8 @@ if len(sys.argv) > 1:
 #TODO:
 # - More clever path replacement for os paths
 # - Elaborate on restAPIcommand, error handling, and use it in GetData as well
-# - Implement command line arguments
 # - Handle incorrect bot-name
 # - Improve workflow
-# - Show URL for FreqUI
 # - load yaml using round_trip_load instead, to preserve order
 #-------------------------------------------------------------- M E N U S ------------------------------------------------------
 def mainMenu():
@@ -86,29 +84,35 @@ def mainMenu():
 def botOverview():
     #Prepare table
     table = PrettyTable()       
-    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Exchange","Port","Days","Gain %", "Gain Stake"]
+    table.field_names = ["Container","Name", "Docker","Bot","Mode","Strategy","Exchange","Port","Days","Closed","Open","Won/Lost","Gain %", "Gain Stake"]
     #Make table data 
     for i in botsList:
-        row = ["","","","","","","","","","",""]
-
-        row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
-        row[1] = i.bot_name #name of bot
-        row[2] = cc("docker",i.docker_state) #docker state
-        row[3] = cc("bot",i.bot_dict['state']) #bot state
-        row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
-        row[5] = i.bot_config['strategy'] #strategy
-        row[6] = i.bot_dict['exchange'] #exchange
-        row[7] = i.port #Port 
-        row[8] = i.info_dict['days_since_first_trade']
-        row[9] = i.info_dict['percent']
-        row[10] = i.info_dict['stake']
-	
-#        print i.bot_name + " >>>>>>>>>>>>>>> i.bot_dict >>>>>>>>>><" 
-#        print i.bot_dict
-#        print i.bot_name + " >>>>>>>>>>>>>>> i.docker_dict >>>>>>>>>><" 
-#        print i.docker_dict
-
-        table.add_row(row)
+      row = ["","","","","","","","","","","","","",""]
+  
+      row[0] = Fore.BLUE + i.docker_name + Style.RESET_ALL  #Instance name
+      row[1] = i.bot_name #name of bot
+      row[2] = cc("docker",i.docker_state) #docker state
+      row[3] = cc("bot",i.bot_dict['state']) #bot state
+      row[4] = cc("mode",i.bot_dict['runmode']) #bot mode
+      row[5] = i.bot_config['strategy'] #strategy
+      row[6] = i.bot_dict['exchange'] #exchange
+      row[7] = i.port #Port 
+      row[8] = i.info_dict['days_since_first_trade']
+      row[9] = str(i.info_dict['closed_trade_count'])
+      row[10] = str(i.info_dict['trade_count']-i.info_dict['closed_trade_count'])
+      row[11] = str(i.info_dict['winning_trades'])+"/"+str(i.info_dict['losing_trades'])
+      row[12] = i.info_dict['percent']
+      row[13] = i.info_dict['stake']
+  
+      #For debugging
+#      print "\n" + i.bot_name + " >>>>>>>>>>>>>>> i.bot_dict >>>>>>>>>><" 
+#      pprint(i.bot_dict)
+#      print"\n" + i.bot_name + " >>>>>>>>>>>>>>> i.docker_dict >>>>>>>>>><" 
+#      pprint (i.docker_dict)
+#      print "\n" + i.bot_name + " >>>>>>>>>>>>>>> i.info_dict >>>>>>>>>><" 
+#      pprint(i.info_dict)
+  
+      table.add_row(row)
         
     return table 
     
@@ -128,7 +132,7 @@ def itemMenu(i):
     table.align[c1] = "l"
     table.align[c2] = "l"
     table.align[c3] = "l"
-    table.align[c4] = "r"
+    table.align[c4] = "l"
          
     #Add rows to table
     table.add_row(["Docker state",cc("docker",i.docker_state),"Total profit,closed trades ",i.info_dict['percent']])
@@ -136,13 +140,14 @@ def itemMenu(i):
     table.add_row(["Bot strategy",i.bot_config['strategy'],"Days since first trade",i.info_dict['days_since_first_trade']])
         
     if (i.docker_state) == "running":
-      table.add_row(["Mode",cc("mode",i.bot_dict['runmode']),"",""])
-      table.add_row(["Exchange",i.bot_dict['exchange'],"",""])
-      table.add_row(["Title (config.json)",i.bot_dict['bot_name'],"",""])
+      table.add_row(["Mode",cc("mode",i.bot_dict['runmode']),"Closed trades",str(i.info_dict['closed_trade_count'])])
+      table.add_row(["Exchange",i.bot_dict['exchange'],"Open trades",str(i.info_dict['trade_count']-i.info_dict['closed_trade_count'])])
+      table.add_row(["Title (config.json)",i.bot_dict['bot_name'],"Won/lost trades",str(i.info_dict['winning_trades'])+"/"+str(i.info_dict['losing_trades'])])
     
     table.add_row(["","","",""])
     table.add_row(["CONFIG",i.os_configfile,"",""])
     table.add_row(["LOG",i.os_logfile,"",""])
+    table.add_row(["URL","http://localhost:"+i.port,"",""])
     print table
     print
     print "r - Reload config"
@@ -303,10 +308,12 @@ class FTBot:
         
         if (self.docker_state) == "running":
           profit_dict = restAPIcommand(self.bot_name,self.bot_config['config'],'profit')
-
+          
           profit_cp = profit_dict['profit_closed_percent']
           profit_cc = round(profit_dict['profit_closed_coin'],2) 
-      
+
+          ret_dict = profit_dict
+          
           ret_dict['percent'] = str(profit_cp) + " %"
           ret_dict['stake'] = str(profit_cc) + " " + self.bot_dict['stake_currency']
 
@@ -335,7 +342,6 @@ with open(filename, "r") as stream:
 botsList = []
 for k, v in yaml_dict['services'].items():
     cmd_str = yaml_dict['services'][k]['command']
-    print "\n" + cmd_str + "\n"
     cmd_dict = parseCommands(cmd_str)
     botsList.append(FTBot(k,v['container_name'],cmd_dict))
 
